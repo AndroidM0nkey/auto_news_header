@@ -1,0 +1,2 @@
+def process(links):
+    pass
