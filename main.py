@@ -6,7 +6,7 @@ import my_json
 app = flask.Flask(__name__)
 
 
-@app.route("/", type=['POST'])
+@app.route("/", methods=['POST'])
 def hello_world():
     if flask.request.content_type != 'application/json':
         flask.abort(400)
@@ -18,4 +18,4 @@ def hello_world():
             return {'results': my_json.process(flask.request.file)}
 
 
-app.run(host='127.0.0.1')
+app.run(host='127.0.0.1', port='8000')

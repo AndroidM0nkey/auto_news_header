@@ -14,21 +14,22 @@ Original file is located at
 # !pip install markovify
 # !pip install -m spacy download en
 
-import pandas as pd
-import numpy as np
-import markovify
-import re
-import json
-from math import sqrt
 import copy
-import pymorphy2
-from pymystem3 import Mystem
+import json
+import re
+from math import sqrt
 from string import punctuation
+
+import gensim.downloader as download_api
+import markovify
+import nltk
+import numpy as np
+import pandas as pd
+import pymorphy2
 from nltk import download, sent_tokenize, word_tokenize
 from nltk.cluster.util import cosine_distance
 from nltk.corpus import stopwords
-import gensim.downloader as download_api
-import nltk
+from pymystem3 import Mystem
 
 nltk.download('gutenberg')
 nltk.download('stopwords')
@@ -43,7 +44,8 @@ for char in ['-', '/']:
 
 
 def generate_header(event):
-    headlines = '. '.join([clear(article["headline"]) for article in event if article["headline"] is not None])
+    headlines = '. '.join([clear(article["headline"])
+                          for article in event if article["headline"] is not None])
     extracted = ". ".join([clear(article["body"]) for article in event])
     # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
     train = headlines * 5 + extracted
@@ -51,7 +53,7 @@ def generate_header(event):
 
     return sorted(
         list({(el[0], el[1][:-1].capitalize()) for el in return_top_k_phrases(generated, train, 1) if el is not None}))[
-           -10:]
+        -10:]
 
 
 def normalizeWhitespace(text):
@@ -144,7 +146,7 @@ class TextRank4Sentences():
         previous_pr = 0
         for epoch in range(self.steps):
             pr_vector = (1 - self.damping) + self.damping * \
-                        np.matmul(similarity_matrix, pr_vector)
+                np.matmul(similarity_matrix, pr_vector)
             if abs(previous_pr - sum(pr_vector)) < self.min_diff:
                 break
             else:
@@ -192,7 +194,7 @@ class TextRank4Sentences():
 
 STOP_WORDS = open('stopWords.txt', 'r').readlines()
 
-data = json.loads(open('data.json', encoding='utf-8').read())
+# data = json.loads(open('data.json', encoding='utf-8').read())
 
 
 def generateSummarizedText(texts, sentenceNumber=3, stopWords=STOP_WORDS):
@@ -206,9 +208,9 @@ def generateSummarizedText(texts, sentenceNumber=3, stopWords=STOP_WORDS):
     return summarizedText
 
 
-texts = []
-for entry in data[0]['news'][:10]:
-    texts.append(entry['body'])
+# texts = []
+# for entry in data[0]['news'][:10]:
+#     texts.append(entry['body'])
 
 mystem = Mystem()
 russian_stopwords = stopwords.words("russian")
@@ -225,11 +227,6 @@ def preprocessText(text):
     return text
 
 
-dataset = pd.read_json('data.json')
-news = pd.concat(pd.Series.tolist(dataset['news'].apply(lambda row: pd.DataFrame.from_dict(row))))[["headline", "body"]]
-news.fillna("", inplace=True)
-# news
-
 stop = {'интерфакс'}
 
 
@@ -238,46 +235,6 @@ def clear(cell):
         [" ".join([word.lower() for word in word_tokenize(sent) if word.isalpha() and word.lower() not in stop]) for
          sent in sent_tokenize(cell)])
 
-
-# dataset
-#
-# [article["headline"] for article in dataset.iloc[4].news]
-
-for i in range(len(dataset)):
-    a = '. '.join([article["headline"] for article in dataset.iloc[i].news if article["headline"] != None])
-
-semen = []
-
-
-def generate_samples(text):
-    gen = markovify.Text(text, state_size=1)
-
-    ans = []
-    for i in range(100):
-        generated = gen.make_short_sentence(max_chars=50)
-        if generated is not None:
-            ans.append(generated)
-    return ans
-
-
-for i in range(len(dataset)):
-    event = dataset.iloc[i].news
-    headlines = '. '.join([clear(article["headline"]) for article in event if article["headline"] is not None])
-    extracted = ". ".join([clear(article["body"]) for article in event])
-
-    # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
-
-    train = headlines * 5 + extracted
-    # train1 = headlines + extracted1
-
-    generated = generate_samples(train)
-    # generated.extend(generate_samples(train1))
-
-    semen.append((train, generated))
-
-
-# with open("generated.json", "w") as gen:
-#    gen.write(json.dumps(semen))
 
 def return_top_k_phrases(list_of_phrases, text, k):
     morph = pymorphy2.MorphAnalyzer(lang='ru')
