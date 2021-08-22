@@ -127,3 +127,16 @@ button:hover {
 .submit-links-btn {
 	border-radius: 4px;
 }
+
+.results {
+	margin-top: 36px;
+	text-align: left;
+}
+
+.results p {
+	color: #aaa;
+}
+
+.results span {
+	color: #eee;
+}

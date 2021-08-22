@@ -3,7 +3,7 @@ import React, { Component } from "react";
 import "./App.css";
 
 const URL_REGEXP = /^https?:\/\/(www\.)?interfax.ru/;
-const BASE_API_URL = "";
+const BASE_API_URL = "http://localhost:8000";
 
 class App extends Component {
 	constructor(props) {
@@ -20,6 +20,7 @@ class App extends Component {
 		this.addLink = this.addLink.bind(this);
 		this.removeLink = this.removeLink.bind(this);
 		this.onLinkInputChange = this.onLinkInputChange.bind(this);
+		this.onLinksSubmit = this.onLinksSubmit.bind(this);
 	}
 
 	submitFile(e) {
@@ -33,10 +34,17 @@ class App extends Component {
 		const formData = new FormData();
 
 		formData.append("File", this.state.selectedFile);
+		formData.append("type", "json");
 
 		axios
-			.post(`${BASE_API_URL}`, formData)
-			.then(({ data }) => this.setState({ data }));
+			.post(`${BASE_API_URL}`, formData, {
+				headers: {
+					"Content-Type": "application/json"
+				}
+			})
+			.then(({ data }) =>
+				this.setState({ data: data.results.reverse() })
+			);
 	}
 
 	onFileChange(e) {
@@ -73,25 +81,25 @@ class App extends Component {
 		});
 	}
 
+	onLinksSubmit() {
+		if (this.state.links.reduce((prev, curr) => prev && curr, true)) {
+			const links = this.state.links.map((val) => val[0]);
+
+			axios
+				.post(
+					BASE_API_URL,
+					{ type: "link", data: links },
+					{ headers: { "Content-Type": "application/json" } }
+				)
+				.then(({ data }) =>
+					this.setState({ data: data.results.reverse() })
+				);
+		}
+	}
+
 	render() {
 		return (
 			<div className="App">
-				<div className="file-upload">
-					<h3>Загрузите файл с данными</h3>
-					<form onSubmit={this.submitFile}>
-						<input
-							className="file-upload-input"
-							type="file"
-							name="file"
-							accept=".json"
-							onChange={this.onFileChange}
-						/>
-						<button className="file-upload-btn" type="submit">
-							Отправить
-						</button>
-					</form>
-				</div>
-				<h2>ИЛИ</h2>
 				<div className="links-upload">
 					<h3>Используйте ссылки на статьи</h3>
 					<div>
@@ -122,9 +130,23 @@ class App extends Component {
 							className={`submit-links-btn ${
 								this.state.links.length > 0 ? "" : "hidden"
 							}`}
+							onClick={this.onLinksSubmit}
 						>
 							Отправить
 						</button>
+					</div>
+					<div className="results">
+						{this.state.data &&
+							this.state.data.map((entry, index) => {
+								return (
+									<div>
+										<p key={`result-${index}`}>
+											{entry[0]} - <span>{entry[1]}</span>
+										</p>
+										<hr />
+									</div>
+								);
+							})}
 					</div>
 				</div>
 			</div>
