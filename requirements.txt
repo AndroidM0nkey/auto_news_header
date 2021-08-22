@@ -1,0 +1,7 @@
+pandas
+numpy
+markovify
+nltk
+pymorphy2
+gensim
+pymystem3

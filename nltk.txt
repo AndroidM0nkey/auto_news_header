@@ -1,0 +1,4 @@
+gutenberg
+stopwords
+punkt
+stopwords
