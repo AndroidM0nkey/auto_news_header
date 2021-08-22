@@ -18,17 +18,17 @@ import pandas as pd
 import numpy as np
 import markovify
 import re
-import nltk
 import json
 from math import sqrt
 import copy
 import pymorphy2
-import gensim.downloader as download_api
 from pymystem3 import Mystem
 from string import punctuation
 from nltk import download, sent_tokenize, word_tokenize
 from nltk.cluster.util import cosine_distance
 from nltk.corpus import stopwords
+import gensim.downloader as download_api
+import nltk
 
 nltk.download('gutenberg')
 nltk.download('stopwords')
@@ -40,6 +40,18 @@ MULTIPLE_WHITESPACE_PATTERN = re.compile(r"\s+", re.UNICODE)
 
 for char in ['-', '/']:
     punctuation = punctuation.replace(char, '')
+
+
+def generate_header(event):
+    headlines = '. '.join([clear(article["headline"]) for article in event if article["headline"] is not None])
+    extracted = ". ".join([clear(article["body"]) for article in event])
+    # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
+    train = headlines * 5 + extracted
+    generated = generate_samples(train)
+
+    return sorted(
+        list({(el[0], el[1][:-1].capitalize()) for el in return_top_k_phrases(generated, train, 1) if el is not None}))[
+           -10:]
 
 
 def normalizeWhitespace(text):
@@ -132,7 +144,7 @@ class TextRank4Sentences():
         previous_pr = 0
         for epoch in range(self.steps):
             pr_vector = (1 - self.damping) + self.damping * \
-                np.matmul(similarity_matrix, pr_vector)
+                        np.matmul(similarity_matrix, pr_vector)
             if abs(previous_pr - sum(pr_vector)) < self.min_diff:
                 break
             else:
@@ -157,7 +169,7 @@ class TextRank4Sentences():
             index = 0
             for epoch in range(number):
                 # print(str(sorted_pr[index]) + " : " +
-                      # str(self.pr_vector[sorted_pr[index]]))
+                # str(self.pr_vector[sorted_pr[index]]))
                 sent = self.sentences[sorted_pr[index]]
                 sent = normalizeWhitespace(sent)
                 top_sentences[sent] = self.pr_vector[sorted_pr[index]]
@@ -198,7 +210,6 @@ texts = []
 for entry in data[0]['news'][:10]:
     texts.append(entry['body'])
 
-
 mystem = Mystem()
 russian_stopwords = stopwords.words("russian")
 
@@ -213,57 +224,64 @@ def preprocessText(text):
 
     return text
 
+
 dataset = pd.read_json('data.json')
-news = pd.concat(pd.Series.tolist(dataset['news'].apply(lambda row : pd.DataFrame.from_dict(row))))[["headline", "body"]]
+news = pd.concat(pd.Series.tolist(dataset['news'].apply(lambda row: pd.DataFrame.from_dict(row))))[["headline", "body"]]
 news.fillna("", inplace=True)
-news
+# news
 
 stop = {'интерфакс'}
 
+
 def clear(cell):
-   return ". ".join([" ".join([word.lower() for word in word_tokenize(sent) if word.isalpha() and word.lower() not in stop]) for sent in sent_tokenize(cell)])
+    return ". ".join(
+        [" ".join([word.lower() for word in word_tokenize(sent) if word.isalpha() and word.lower() not in stop]) for
+         sent in sent_tokenize(cell)])
 
-dataset
 
-[article["headline"] for article in dataset.iloc[4].news]
+# dataset
+#
+# [article["headline"] for article in dataset.iloc[4].news]
 
 for i in range(len(dataset)):
-   a = '. '.join([article["headline"] for article in dataset.iloc[i].news if article["headline"] != None])
+    a = '. '.join([article["headline"] for article in dataset.iloc[i].news if article["headline"] != None])
 
 semen = []
 
-def generate_samples(text):
-  gen = markovify.Text(text, state_size=1)
 
-  ans = []
-  for i in range(100):
-    generated = gen.make_short_sentence(max_chars=50)
-    if generated is not None:
-      ans.append(generated)
-  return ans
+def generate_samples(text):
+    gen = markovify.Text(text, state_size=1)
+
+    ans = []
+    for i in range(100):
+        generated = gen.make_short_sentence(max_chars=50)
+        if generated is not None:
+            ans.append(generated)
+    return ans
+
 
 for i in range(len(dataset)):
-  event = dataset.iloc[i].news
-  headlines = '. '.join([clear(article["headline"]) for article in event if article["headline"] is not None])
-  extracted = ". ".join([clear(article["body"]) for article in event])
+    event = dataset.iloc[i].news
+    headlines = '. '.join([clear(article["headline"]) for article in event if article["headline"] is not None])
+    extracted = ". ".join([clear(article["body"]) for article in event])
 
-  # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
+    # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
 
-  train = headlines*5 + extracted
-  # train1 = headlines + extracted1
+    train = headlines * 5 + extracted
+    # train1 = headlines + extracted1
 
-  generated = generate_samples(train)
-  # generated.extend(generate_samples(train1))
+    generated = generate_samples(train)
+    # generated.extend(generate_samples(train1))
 
-  semen.append((train, generated))
+    semen.append((train, generated))
 
-with open("generated.json", "w") as gen:
-   gen.write(json.dumps(semen))
 
+# with open("generated.json", "w") as gen:
+#    gen.write(json.dumps(semen))
 
 def return_top_k_phrases(list_of_phrases, text, k):
     morph = pymorphy2.MorphAnalyzer(lang='ru')
-    
+
     text = re.sub(
         r' +', ' ', text.translate(str.maketrans('', '', punctuation)))
     parsed_text = text.split()
@@ -279,13 +297,12 @@ def return_top_k_phrases(list_of_phrases, text, k):
         elif cur_pos != 'VERB' and cur_pos != 'NOUN':
             continue
         parsed_named_text.append(str(cur_mas.normal_form) + '_' + str(cur_pos))
-    
-    
+
     result_vec = []
     for phrase in list_of_phrases:
         r_phrase = copy.deepcopy(phrase)
         r_phrase = re.sub(
-        r' +', ' ', r_phrase.translate(str.maketrans('', '', punctuation)))
+            r' +', ' ', r_phrase.translate(str.maketrans('', '', punctuation)))
         cur_points = 0.0
         words = r_phrase.split()
         size = len(words)
@@ -299,7 +316,7 @@ def return_top_k_phrases(list_of_phrases, text, k):
             if cur_pos == 'INFN':
                 cur_pos = 'VERB'
             elif cur_pos != 'VERB' and cur_pos != 'NOUN':
-                size-=1
+                size -= 1
                 continue
             parsed_word = str(cur_mas.normal_form) + '_' + str(cur_pos)
             cur_metric = 0.0
@@ -308,15 +325,15 @@ def return_top_k_phrases(list_of_phrases, text, k):
                     cm = (russian_model.similarity(parsed_word, wordt))
                 except:
                     cm = 0.1
-                cur_metric += (cm)**2
-            cur_points+=(sqrt(cur_metric/len(parsed_named_text)))
+                cur_metric += (cm) ** 2
+            cur_points += (sqrt(cur_metric / len(parsed_named_text)))
         if size != 0:
-            result_vec.append((cur_points/size, phrase))
+            result_vec.append((cur_points / size, phrase))
         else:
-            result_vec.append((0,phrase))
+            result_vec.append((0, phrase))
     result_vec.sort()
     print(result_vec)
 
-text = semen[2][0]
-phrases = semen[2][1]
-return_top_k_phrases(phrases, text, 1)
+# text = semen[2][0]
+# phrases = semen[2][1]
+# return_top_k_phrases(phrases, text, 1)

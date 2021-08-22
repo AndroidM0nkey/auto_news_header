@@ -5,3 +5,6 @@ nltk
 pymorphy2
 gensim
 pymystem3
+requests
+beautifulsoup4
+flask
