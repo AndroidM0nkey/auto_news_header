@@ -13,9 +13,9 @@ def hello_world():
     else:
         data = flask.request.json
         if data['type'] == 'link':
-            return links.process(data['data'])
+            return {'results': links.process(data['data'])}
         else:
-            return my_json.process(flask.request.file)
+            return {'results': my_json.process(flask.request.file)}
 
 
 app.run(host='127.0.0.1')
