@@ -3,6 +3,8 @@ import time
 from bs4 import BeautifulSoup
 from requests import get
 
+import algo
+
 
 def process(links):
     data = []
@@ -37,6 +39,5 @@ def process(links):
             time.sleep(0.1)
         except:
             print("went wrong")
-            return []
-    return data
+    return algo.generate_header(data)
     # algo.gogogo(data)

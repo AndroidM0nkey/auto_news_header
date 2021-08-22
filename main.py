@@ -1,9 +1,11 @@
 import flask
+from flask_cors import CORS
 
 import links
 import my_json
 
 app = flask.Flask(__name__)
+CORS(app)
 
 
 @app.route("/", methods=['POST'])

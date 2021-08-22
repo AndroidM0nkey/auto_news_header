@@ -43,19 +43,6 @@ for char in ['-', '/']:
     punctuation = punctuation.replace(char, '')
 
 
-def generate_header(event):
-    headlines = '. '.join([clear(article["headline"])
-                          for article in event if article["headline"] is not None])
-    extracted = ". ".join([clear(article["body"]) for article in event])
-    # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
-    train = headlines * 5 + extracted
-    generated = generate_samples(train)
-
-    return sorted(
-        list({(el[0], el[1][:-1].capitalize()) for el in return_top_k_phrases(generated, train, 1) if el is not None}))[
-        -10:]
-
-
 def normalizeWhitespace(text):
     return MULTIPLE_WHITESPACE_PATTERN.sub(replaceWhitespace, text)
 
@@ -208,9 +195,8 @@ def generateSummarizedText(texts, sentenceNumber=3, stopWords=STOP_WORDS):
     return summarizedText
 
 
-# texts = []
-# for entry in data[0]['news'][:10]:
-#     texts.append(entry['body'])
+texts = []
+
 
 mystem = Mystem()
 russian_stopwords = stopwords.words("russian")
@@ -231,13 +217,25 @@ stop = {'интерфакс'}
 
 
 def clear(cell):
-    return ". ".join(
-        [" ".join([word.lower() for word in word_tokenize(sent) if word.isalpha() and word.lower() not in stop]) for
-         sent in sent_tokenize(cell)])
+    return ". ".join([" ".join([word.lower() for word in word_tokenize(sent) if word.isalpha() and word.lower() not in stop]) for sent in sent_tokenize(cell)])
+
+
+def preprocess_phrases(list_of_phrases):
+    morph = pymorphy2.MorphAnalyzer(lang='ru')
+    st = set()
+    for i in list_of_phrases:
+        st.add(i)
+
+    ans = []
+    for i in st:
+        ans.append(i)
+    return ans
 
 
 def return_top_k_phrases(list_of_phrases, text, k):
     morph = pymorphy2.MorphAnalyzer(lang='ru')
+
+    list_of_phrases = preprocess_phrases(list_of_phrases)
 
     text = re.sub(
         r' +', ' ', text.translate(str.maketrans('', '', punctuation)))
@@ -282,15 +280,60 @@ def return_top_k_phrases(list_of_phrases, text, k):
                     cm = (russian_model.similarity(parsed_word, wordt))
                 except:
                     cm = 0.1
-                cur_metric += (cm) ** 2
-            cur_points += (sqrt(cur_metric / len(parsed_named_text)))
+                cur_metric += (cm)**2
+            cur_points += (sqrt(cur_metric/len(parsed_named_text)))
         if size != 0:
-            result_vec.append((cur_points / size, phrase))
+            result_vec.append((cur_points/size, phrase))
         else:
             result_vec.append((0, phrase))
     result_vec.sort()
-    print(result_vec)
+    return(result_vec)
 
-# text = semen[2][0]
-# phrases = semen[2][1]
-# return_top_k_phrases(phrases, text, 1)
+
+def generate_samples(text):
+    gen = markovify.Text(text, state_size=1)
+
+    ans = []
+    for i in range(100):
+        generated = gen.make_short_sentence(max_chars=50)
+        if generated is not None:
+            ans.append(generated)
+    return ans
+
+
+def generate_header(event):
+    headlines = '. '.join([clear(article["headline"])
+                          for article in event if article["headline"] is not None])
+    extracted = ". ".join([clear(article["body"]) for article in event])
+    # extracted1 = ". ".join([clear(generateSummarizedText([article["body"]], 1)) for article in event])
+
+    train = headlines*5 + extracted
+    generated = generate_samples(train)
+    morph = pymorphy2.MorphAnalyzer(lang='ru')
+    st = list({(el[0], el[1][:-1].capitalize())
+              for el in return_top_k_phrases(generated, train, 1) if el is not None})
+
+    ans = []
+    for i in range(len(st)):
+        cur = st[i][1]
+        isRid = False
+        isTrash = False
+        shitSet = set()
+        for j in cur.split():
+            if j in shitSet:
+                isTrash = True
+                break
+            shitSet.add(j)
+            cur_mas = morph.parse(j)[0]
+            cur_pos = str(cur_mas.tag.POS)
+            if cur_pos == 'None':
+                isRid = True
+                break
+        new_val = st[i][0]
+        if isRid:
+            new_val = max(0.0, st[i][0] - 0.1)
+        if isTrash:
+            new_val = max(0.0, st[i][0] - 0.2)
+        ans.append((new_val, st[i][1]))
+
+    return list(sorted(ans)[-10:])
